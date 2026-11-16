@@ -140,8 +140,8 @@ def buscar_pagina(
     desde: int,
     salto_maximo: int = 80,
     longitud_clave: int = 35,
-) -> int | None:
-    """Primera página (1-indexed) desde `desde` donde aparece el título.
+) -> tuple[int, str] | None:
+    """Página (1-indexed) y variante con la que se encontró el título.
 
     `paginas_norm` son los textos de todas las páginas ya normalizados: se
     normalizan una sola vez porque con 958 páginas y 300 títulos hacerlo
@@ -165,7 +165,7 @@ def buscar_pagina(
             continue
         for i in range(desde - 1, hasta):
             if clave in paginas_norm[i]:
-                return i + 1
+                return i + 1, variante
     return None
 
 
@@ -196,10 +196,12 @@ def extraer_secciones(
         cursor = max(paginas_indice) + 1
 
         for lineas in entradas:
-            variantes = variantes_titulo(lineas)
-            pagina = buscar_pagina(paginas_norm, variantes, cursor)
-            if pagina is not None:
-                localizados.append((variantes[-1], pagina))
+            encontrado = buscar_pagina(
+                paginas_norm, variantes_titulo(lineas), cursor
+            )
+            if encontrado is not None:
+                pagina, titulo = encontrado
+                localizados.append((titulo, pagina))
                 cursor = pagina
 
         secciones: list[Seccion] = []
