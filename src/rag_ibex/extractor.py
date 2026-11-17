@@ -17,13 +17,23 @@ import pymupdf
 
 @dataclass
 class Seccion:
-    """Un trozo del informe: una sección con su texto y de dónde salió."""
+    """Una sección del informe, con su texto guardado página a página.
+
+    Guardamos (número de página, texto) en vez de todo concatenado para
+    que cada trozo sepa después de qué página sale exactamente. Si lo
+    juntáramos aquí, la cita de una respuesta sería "páginas 342-381", que
+    no sirve para comprobar nada.
+    """
 
     empresa: str
     titulo: str
     pagina_inicio: int  # página física del PDF, empezando en 1
     pagina_fin: int
-    texto: str
+    paginas: list[tuple[int, str]]
+
+    @property
+    def texto(self) -> str:
+        return "\n".join(t for _, t in self.paginas)
 
     @property
     def n_caracteres(self) -> int:
@@ -61,6 +71,19 @@ def limpiar_linea(linea: str) -> str:
 
 # Líneas que son decoración del índice, no entradas
 CABECERAS = {"índice", "indice", "página", "pagina", "contenido", "páginas"}
+
+
+def limpiar_titulo(titulo: str) -> str:
+    """Arregla los títulos que en realidad son la barra de navegación.
+
+    El pie de página de Santander repite todos los capítulos separados por
+    " l ", y el índice lo recoge como si fuera un título. Citar una
+    respuesta con esa ristra de 180 caracteres no dice nada, así que nos
+    quedamos con su última parte, que sí identifica el documento.
+    """
+    if titulo.count(" l ") >= 2:
+        titulo = titulo.rsplit(" l ", 1)[-1].strip()
+    return titulo
 
 
 # --------------------------------------------------------------------------
@@ -201,6 +224,7 @@ def extraer_secciones(
             )
             if encontrado is not None:
                 pagina, titulo = encontrado
+                titulo = limpiar_titulo(titulo)
                 localizados.append((titulo, pagina))
                 cursor = pagina
 
@@ -222,11 +246,11 @@ def extraer_secciones(
             parte_de = len(trozos)
 
             for n, (desde_p, hasta_p) in enumerate(trozos, start=1):
-                texto = "\n".join(
-                    doc[p].get_text() for p in range(desde_p - 1, hasta_p)
-                ).strip()
-
-                if len(texto) < minimo_caracteres:
+                paginas = [
+                    (p + 1, doc[p].get_text())
+                    for p in range(desde_p - 1, hasta_p)
+                ]
+                if sum(len(t) for _, t in paginas) < minimo_caracteres:
                     continue
 
                 nombre = titulo if parte_de == 1 else f"{titulo} ({n}/{parte_de})"
@@ -236,7 +260,7 @@ def extraer_secciones(
                         titulo=nombre,
                         pagina_inicio=desde_p,
                         pagina_fin=hasta_p,
-                        texto=texto,
+                        paginas=paginas,
                     )
                 )
 
