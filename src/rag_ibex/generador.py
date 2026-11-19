@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from rag_ibex.chunker import Trozo
 from rag_ibex.indexador import Buscador
 
-MODELO = "gemini-3.8-flash"
+MODELOS = ["gemini-2.5-flash", "gemini-3.7-flash", "gemini-3.5-flash"]
 
 INSTRUCCIONES = """\
 Eres un asistente que responde preguntas sobre informes anuales de \
@@ -64,21 +64,19 @@ def construir_prompt(pregunta: str, trozos: list[Trozo]) -> str:
     )
 
 
-def llamar_modelo(
+def _llamar_uno(
     prompt: str,
-    modelo: str = MODELO,
-    intentos: int = 4,
+    modelo: str,
+    intentos: int = 2,
 ) -> str:
-    """Única función que depende del proveedor. Cámbiala si usas otro.
+    """llama a un modelo en concreto, reintentando ante fallos temporales.
 
-    Reintenta ante errores temporales (503 por saturación, 429 por límite
-    de peticiones) esperando cada vez más: 2s, 4s, 8s.
+    La espera se dobla cada vez (2s, 4s): si todos los clientes reintentaran al segundo, un servidor sat;urado nunca se recuperaría.
     """
     import time
 
     from google import genai
     from google.genai import types
-    from google.genai import errors
 
     clave = os.environ.get("GEMINI_API_KEY")
     if not clave:
@@ -86,7 +84,7 @@ def llamar_modelo(
             "Falta GEMINI_API_KEY. En PowerShell: $env:GEMINI_API_KEY = 'tu-clave'"
         )
 
-    cliente = genai.Client(api_key=clave)
+    cliente = genai.Client(api_key=clave, http_options=types.HttpOptions(timeout=60_000),)
 
     for intento in range(1, intentos + 1):
         try:
@@ -108,11 +106,31 @@ def llamar_modelo(
             if not temporal or intento == intentos:
                 raise
             espera = 2 ** intento
-            print(f"   (reintento {intento} en {espera}s: {type(e).__name__})", flush=True)
+            print(f"   ({modelo}: reintento {intento} en {espera}s)", flush=True)
             time.sleep(espera)
 
     raise RuntimeError("No debería llegar aquí")
 
+
+
+def llamar_modelo(prompt: str, modelos: list[str] = MODELOS) -> str:
+    """Prueba los modelos en orden hasta que uno responda.
+
+    Depender de un solo modelo es frágil: el más reciente suele ser el más
+    demandado y devuelve 503 con facilidad. Si falla, se cae al siguiente.
+    """
+    ultimo_error: Exception | None = None
+
+    for modelo in modelos:
+        try:
+            return _llamar_uno(prompt, modelo)
+        except Exception as e:
+            print(f"   ({modelo} agotado: {type(e).__name__})", flush=True)
+            ultimo_error = e
+
+    raise RuntimeError(
+        f"Ningún modelo respondió. Último error: {ultimo_error}"
+    ) from ultimo_error
 
 class Asistente:
     """Junta la búsqueda y la generación."""
