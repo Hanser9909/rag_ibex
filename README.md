@@ -2,7 +2,7 @@
 
 Sistema de recuperación aumentada (RAG) que responde preguntas sobre los informes anuales de **Santander**, **Iberdrola** e **Inditex** (ejercicio 2025), citando la página exacta de la que sale cada dato.
 
-**[Probar la demo](#)** - *(pendiente de desplegar)*
+**[Probar la demo](https://huggingface.co/spaces/Hanser9909/rag-ibex)**
 
 ```
 ¿Cuál fue el beneficio atribuido de Santander en 2025?
