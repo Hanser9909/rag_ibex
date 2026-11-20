@@ -20,6 +20,7 @@ from rag_ibex.chunker import Trozo, trocear_todo
 
 MODELO = "intfloat/multilingual-e5-base"
 CARPETA = Path("indice")
+REPO_INDICE = "Hanser9909/rag-ibex-indice"
 
 # E5 necesita estos prefijos: fue entrenado con ellos y sin ellos
 # los resultados empeoran de forma silenciosa.
@@ -75,6 +76,16 @@ class Buscador:
 
     def __init__(self, carpeta: Path = CARPETA):
         from sentence_transformers import SentenceTransformer
+
+        # En local usamos el índice construido; en un despliegue esa
+        # carpeta no existe, así que se descarga del dataset y queda en
+        # caché para los siguientes arranques.
+        if not (carpeta / "vectores.npy").exists():
+            from huggingface_hub import snapshot_download
+
+            carpeta = Path(
+                snapshot_download(repo_id=REPO_INDICE, repo_type="dataset")
+            )
 
         self.vectores = np.load(carpeta / "vectores.npy")
 

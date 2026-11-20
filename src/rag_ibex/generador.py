@@ -71,20 +71,14 @@ def _llamar_uno(
 ) -> str:
     """llama a un modelo en concreto, reintentando ante fallos temporales.
 
-    La espera se dobla cada vez (2s, 4s): si todos los clientes reintentaran al segundo, un servidor sat;urado nunca se recuperaría.
+    La espera se dobla cada vez (2s, 4s): si todos los clientes reintentaran al segundo, un servidor saturado nunca se recuperaría.
     """
     import time
 
     from google import genai
     from google.genai import types
 
-    clave = os.environ.get("GEMINI_API_KEY")
-    if not clave:
-        raise RuntimeError(
-            "Falta GEMINI_API_KEY. En PowerShell: $env:GEMINI_API_KEY = 'tu-clave'"
-        )
-
-    cliente = genai.Client(api_key=clave, http_options=types.HttpOptions(timeout=60_000),)
+    cliente = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=types.HttpOptions(timeout=60_000),)
 
     for intento in range(1, intentos + 1):
         try:
@@ -114,11 +108,15 @@ def _llamar_uno(
 
 
 def llamar_modelo(prompt: str, modelos: list[str] = MODELOS) -> str:
-    """Prueba los modelos en orden hasta que uno responda.
+    """Prueba los modelos en orden hasta que uno responda."""
 
-    Depender de un solo modelo es frágil: el más reciente suele ser el más
-    demandado y devuelve 503 con facilidad. Si falla, se cae al siguiente.
-    """
+    # Un error de configuración no se arregla cambiando de modelo:
+    # falla aquí en vez de reintentar tres veces lo mismo.
+    if not os.environ.get("GEMINI_API_KEY"):
+        raise RuntimeError(
+            "Falta GEMINI_API_KEY. En PowerShell: $env:GEMINI_API_KEY = 'tu-clave'"
+        )
+    
     ultimo_error: Exception | None = None
 
     for modelo in modelos:
