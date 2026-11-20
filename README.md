@@ -2,7 +2,7 @@
 
 Sistema de recuperación aumentada (RAG) que responde preguntas sobre los informes anuales de **Santander**, **Iberdrola** e **Inditex** (ejercicio 2025), citando la página exacta de la que sale cada dato.
 
-**[Probar la demo](#)** · *(pendiente de desplegar)*
+**[Probar la demo](#)** - *(pendiente de desplegar)*
 
 ```
 ¿Cuál fue el beneficio atribuido de Santander en 2025?
@@ -158,4 +158,4 @@ Requiere una clave de API en `GEMINI_API_KEY`.
 
 ## Stack
 
-Python 3.12 · PyMuPDF · sentence-transformers · numpy · Gradio · Gemini API · uv
+Python 3.12 - PyMuPDF - sentence-transformers - numpy - Gradio - Gemini API - uv
